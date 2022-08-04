@@ -1,16 +1,15 @@
-var express = require("express");
+var express = require('express');
 var router = express.Router();
-const bcrypt = require("bcrypt");
-const { v4: uuidv4 } = require("uuid");
-const { generateToken } = require("../utils/jwt");
-const { db } = require("../utils/db");
+const bcrypt = require('bcrypt');
+const { generateToken } = require('../utils/jwt');
+const { db } = require('../utils/db');
 
-router.post("/login", async (req, res, next) => {
+router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       res.status(400);
-      throw new Error("You must provide an email and a password.");
+      throw new Error('You must provide an email and a password.');
     }
 
     const user = await db.user.findUnique({
@@ -21,24 +20,59 @@ router.post("/login", async (req, res, next) => {
 
     if (!user) {
       res.status(403);
-      throw new Error("Invalid login credentials.");
+      throw new Error('Invalid login credentials.');
     }
 
-    const validPassword = await bcrypt.compare(password, existingUser.password);
+    const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       res.status(403);
-      throw new Error("Invalid login credentials.");
+      throw new Error('Invalid login credentials.');
     }
 
-    const jti = uuidv4();
-    const { accessToken } = generateToken(user, jti);
+    const { accessToken } = generateToken(user);
 
     res.json({
       accessToken,
     });
-  } catch (err) {
-    console.log(JSON.stringify(err));
-    next(err);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/register', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400);
+      throw new Error('You must provide an email and a password.');
+    }
+
+    const existingUser = await db.user.findUnique({
+      where: {
+        email,
+      },
+    });
+
+    if (existingUser) {
+      res.status(400);
+      throw new Error('Email already in use.');
+    }
+
+    const hashedPass = bcrypt.hashSync(password, 12);
+    const user = await db.user.create({
+      data: {
+        email,
+        password: hashedPass,
+      },
+    });
+
+    const { accessToken } = generateToken(user);
+
+    res.json({
+      accessToken,
+    });
+  } catch (error) {
+    next(error);
   }
 });
 
