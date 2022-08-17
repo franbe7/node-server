@@ -3,6 +3,7 @@ var router = express.Router();
 const bcrypt = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
 const { db } = require('../utils/db');
+const { emailValidator } = require('../utils/validators');
 
 router.post('/login', async (req, res, next) => {
   try {
@@ -42,6 +43,12 @@ router.post('/login', async (req, res, next) => {
 router.post('/register', async (req, res, next) => {
   try {
     const { email, password } = req.body;
+
+    if (!emailValidator(email)) {
+      res.status(400);
+      throw new Error('You must provide an valid email.');
+    }
+
     if (!email || !password) {
       res.status(400);
       throw new Error('You must provide an email and a password.');
